@@ -9,8 +9,7 @@ env/
 .venv
 
 # Proto generated files
-*_pb2.py
-*_pb2_grpc.py
+# Keep generated MT5 stubs committed so CI can build even when mt5.proto is not present.
 
 # Build
 build/

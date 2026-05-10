@@ -68,10 +68,25 @@ jobs:
         if: steps.paths.outputs.has_proto != 'true'
         shell: pwsh
         run: |
-          $pb2 = "${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1/mt5_pb2.py"
-          $grpc = "${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1/mt5_pb2_grpc.py"
-          if (!(Test-Path $pb2) -or !(Test-Path $grpc)) {
-            throw "mt5.proto not found and generated stubs are missing ($pb2, $grpc)"
+          $candidates = @(
+            "${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1",
+            "broker_agent/proto/mt5/v1",
+            "proto/mt5/v1"
+          ) | Select-Object -Unique
+
+          $found = $false
+          foreach ($dir in $candidates) {
+            $pb2 = "$dir/mt5_pb2.py"
+            $grpc = "$dir/mt5_pb2_grpc.py"
+            if ((Test-Path $pb2) -and (Test-Path $grpc)) {
+              Write-Host "Found generated stubs in $dir"
+              $found = $true
+              break
+            }
+          }
+
+          if (-not $found) {
+            throw "mt5.proto not found and generated stubs are missing in all known locations: $($candidates -join ', ')"
           }
 
       - name: Build with PyInstaller
