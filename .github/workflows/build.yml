@@ -10,9 +10,6 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: broker_agent
 
     steps:
       - name: Checkout
@@ -24,29 +21,29 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r broker_agent/requirements.txt
 
       - name: Generate gRPC stubs
         run: |
           python -m grpc_tools.protoc \
-            --proto_path=../broker_service/proto/mt5/v1 \
-            --python_out=proto/mt5/v1 \
-            --grpc_python_out=proto/mt5/v1 \
-            ../broker_service/proto/mt5/v1/mt5.proto
+            --proto_path=broker_service/proto/mt5/v1 \
+            --python_out=broker_agent/proto/mt5/v1 \
+            --grpc_python_out=broker_agent/proto/mt5/v1 \
+            broker_service/proto/mt5/v1/mt5.proto
 
       - name: Build with PyInstaller
         run: |
           pyinstaller \
             --onefile \
             --name mt5_agent \
-            --add-data "config.yaml:." \
+            --add-data "broker_agent/config.yaml:." \
             --hidden-import MetaTrader5 \
             --hidden-import grpc \
             --hidden-import protobuf \
-            main.py
+            broker_agent/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mt5-agent-exe
-          path: broker_agent/dist/mt5_agent.exe
+          path: dist/mt5_agent.exe
