@@ -97,10 +97,14 @@ async def main():
     # Create agent
     agent = MT5Agent(config)
 
-    # Setup signal handlers
+    # Setup signal handlers (Windows event loop may not support add_signal_handler)
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(agent.stop()))
+        try:
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(agent.stop()))
+        except NotImplementedError:
+            logger.warning("Signal handlers are not supported on this platform/event loop")
+            break
 
     # Start agent
     try:
