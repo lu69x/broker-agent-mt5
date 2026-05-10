@@ -4,7 +4,25 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - 'broker_agent/**'
+      - '.github/workflows/build.yml'
+      - '**/*.py'
+      - 'requirements.txt'
+      - 'build.sh'
+      - 'generate_proto.sh'
+      - 'config.yaml'
+      - 'broker.cfg'
+      - 'proto/**'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - '.github/workflows/build.yml'
+      - '**/*.py'
+      - 'requirements.txt'
+      - 'build.sh'
+      - 'generate_proto.sh'
+      - 'config.yaml'
+      - 'broker.cfg'
+      - 'proto/**'
   workflow_dispatch:
 
 jobs:
@@ -53,11 +71,17 @@ jobs:
           }
 
       - name: Install dependencies
-        run: pip install -r ${{ steps.paths.outputs.agent_dir }}/requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ${{ steps.paths.outputs.agent_dir }}/requirements.txt
 
       - name: Generate gRPC stubs
         if: steps.paths.outputs.has_proto == 'true'
-        run: python -m grpc_tools.protoc --proto_path=${{ steps.paths.outputs.proto_dir }} --python_out=${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1 --grpc_python_out=${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1 ${{ steps.paths.outputs.proto_file }}
+        shell: pwsh
+        run: |
+          $outDir = "${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          python -m grpc_tools.protoc --proto_path=${{ steps.paths.outputs.proto_dir }} --python_out=$outDir --grpc_python_out=$outDir ${{ steps.paths.outputs.proto_file }}
 
       - name: Verify generated stubs exist when proto is absent
         if: steps.paths.outputs.has_proto != 'true'
@@ -85,7 +109,7 @@ jobs:
           }
 
       - name: Build with PyInstaller
-        run: pyinstaller --onefile --name mt5_agent --add-data "${{ steps.paths.outputs.agent_dir }}/config.yaml:." --hidden-import MetaTrader5 --hidden-import grpc --hidden-import protobuf ${{ steps.paths.outputs.agent_dir }}/main.py
+        run: pyinstaller --onefile --name mt5_agent --add-data "${{ steps.paths.outputs.agent_dir }}/config.yaml;." --collect-submodules proto --hidden-import MetaTrader5 --hidden-import numpy --hidden-import grpc --hidden-import google.protobuf ${{ steps.paths.outputs.agent_dir }}/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
