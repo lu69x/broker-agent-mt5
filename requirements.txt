@@ -1,8 +1,8 @@
 # MT5 Python package
-MetaTrader5>=5.0.45
+MetaTrader5>=5.0.45; platform_system == "Windows"
 
 # gRPC
-grpc>=1.60.0
+grpcio>=1.60.0
 grpcio-tools>=1.60.0
 protobuf>=4.25.0
 

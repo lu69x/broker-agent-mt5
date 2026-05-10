@@ -6,6 +6,7 @@ OUTPUT_DIR="proto/mt5/v1"
 
 mkdir -p "$OUTPUT_DIR"
 
+PYTHONWARNINGS="ignore:pkg_resources is deprecated as an API:UserWarning" \
 python -m grpc_tools.protoc \
   --proto_path="$PROTO_DIR" \
   --python_out="$OUTPUT_DIR" \
