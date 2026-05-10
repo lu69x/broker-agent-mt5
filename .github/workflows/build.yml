@@ -10,6 +10,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: broker_agent
 
     steps:
       - name: Checkout
@@ -21,13 +24,10 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          cd broker_agent
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Generate gRPC stubs
         run: |
-          cd broker_agent
           python -m grpc_tools.protoc \
             --proto_path=../broker_service/proto/mt5/v1 \
             --python_out=proto/mt5/v1 \
@@ -36,7 +36,6 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          cd broker_agent
           pyinstaller \
             --onefile \
             --name mt5_agent \
