@@ -1,0 +1,53 @@
+name: Build MT5 Agent
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'broker_agent/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd broker_agent
+          pip install -r requirements.txt
+
+      - name: Generate gRPC stubs
+        run: |
+          cd broker_agent
+          python -m grpc_tools.protoc \
+            --proto_path=../broker_service/proto/mt5/v1 \
+            --python_out=proto/mt5/v1 \
+            --grpc_python_out=proto/mt5/v1 \
+            ../broker_service/proto/mt5/v1/mt5.proto
+
+      - name: Build with PyInstaller
+        run: |
+          cd broker_agent
+          pyinstaller \
+            --onefile \
+            --name mt5_agent \
+            --add-data "config.yaml:." \
+            --hidden-import MetaTrader5 \
+            --hidden-import grpc \
+            --hidden-import protobuf \
+            main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt5-agent-exe
+          path: broker_agent/dist/mt5_agent.exe

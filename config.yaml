@@ -1,0 +1,24 @@
+# Broker Service Configuration
+broker:
+  url: "localhost:50051"
+  internal_token: ""  # Leave empty if no auth
+
+# Agent Configuration
+agent:
+  id: "agent-001"
+  name: "MT5 Agent 1"
+  heartbeat_interval: 30  # seconds
+  lease_seconds: 60  # heartbeat lease duration
+
+# MT5 Terminal Configuration
+mt5:
+  login: 0  # 0 = use current terminal login
+  password: ""
+  server: ""  # empty = use current terminal
+  timeout: 60000  # milliseconds
+
+# Data Collection
+collection:
+  interval: 5  # seconds between snapshot publishing
+  symbols: ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
+  timeframes: ["M1", "M5", "H1"]

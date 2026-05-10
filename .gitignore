@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv
+
+# Proto generated files
+*_pb2.py
+*_pb2_grpc.py
+
+# Build
+build/
+dist/
+*.spec
+
+# Config (sensitive)
+config.local.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# AI tooling artifacts
+.claude/
+.codex/
+.cursor/
+.windsurf/
+.aider*
+*.prompt.md

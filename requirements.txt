@@ -1,0 +1,16 @@
+# MT5 Python package
+MetaTrader5>=5.0.45
+
+# gRPC
+grpc>=1.60.0
+grpcio-tools>=1.60.0
+protobuf>=4.25.0
+
+# Config
+pyyaml>=6.0
+
+# Logging
+colorlog>=6.8.0
+
+# Build (optional)
+pyinstaller>=6.0.0
