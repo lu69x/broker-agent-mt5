@@ -20,27 +20,49 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Resolve project paths
+        id: paths
+        shell: pwsh
+        run: |
+          if (Test-Path "broker_agent/requirements.txt") {
+            "agent_dir=broker_agent" >> $env:GITHUB_OUTPUT
+          } elseif (Test-Path "requirements.txt") {
+            "agent_dir=." >> $env:GITHUB_OUTPUT
+          } else {
+            throw "requirements.txt not found"
+          }
+
+          if (Test-Path "broker_service/proto/mt5/v1/mt5.proto") {
+            "proto_file=broker_service/proto/mt5/v1/mt5.proto" >> $env:GITHUB_OUTPUT
+            "proto_dir=broker_service/proto/mt5/v1" >> $env:GITHUB_OUTPUT
+          } elseif (Test-Path "../broker_service/proto/mt5/v1/mt5.proto") {
+            "proto_file=../broker_service/proto/mt5/v1/mt5.proto" >> $env:GITHUB_OUTPUT
+            "proto_dir=../broker_service/proto/mt5/v1" >> $env:GITHUB_OUTPUT
+          } else {
+            throw "mt5.proto not found"
+          }
+
       - name: Install dependencies
-        run: pip install -r broker_agent/requirements.txt
+        run: pip install -r ${{ steps.paths.outputs.agent_dir }}/requirements.txt
 
       - name: Generate gRPC stubs
         run: |
           python -m grpc_tools.protoc \
-            --proto_path=broker_service/proto/mt5/v1 \
-            --python_out=broker_agent/proto/mt5/v1 \
-            --grpc_python_out=broker_agent/proto/mt5/v1 \
-            broker_service/proto/mt5/v1/mt5.proto
+            --proto_path=${{ steps.paths.outputs.proto_dir }} \
+            --python_out=${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1 \
+            --grpc_python_out=${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1 \
+            ${{ steps.paths.outputs.proto_file }}
 
       - name: Build with PyInstaller
         run: |
           pyinstaller \
             --onefile \
             --name mt5_agent \
-            --add-data "broker_agent/config.yaml:." \
+            --add-data "${{ steps.paths.outputs.agent_dir }}/config.yaml:." \
             --hidden-import MetaTrader5 \
             --hidden-import grpc \
             --hidden-import protobuf \
-            broker_agent/main.py
+            ${{ steps.paths.outputs.agent_dir }}/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
