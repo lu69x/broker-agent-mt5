@@ -1,7 +1,9 @@
-"""gRPC Client for Broker Service
+"""gRPC Client for Broker Service.
 
 Communicates with MT5IngressService on the broker.
 """
+import sys
+from pathlib import Path
 from typing import Optional
 
 import grpc
@@ -11,13 +13,38 @@ from .logger import get_logger
 
 logger = get_logger(__name__)
 
-# Proto imports (generated)
-try:
-    from proto.mt5.v1 import mt5_pb2, mt5_pb2_grpc
-except ImportError:
-    mt5_pb2 = None
-    mt5_pb2_grpc = None
-    logger.warning("Proto files not generated yet. Run: bash generate_proto.sh")
+def _load_proto_modules():
+    """Load generated proto modules with fallbacks for packaged Windows builds."""
+    try:
+        from proto.mt5.v1 import mt5_pb2 as _mt5_pb2, mt5_pb2_grpc as _mt5_pb2_grpc
+        return _mt5_pb2, _mt5_pb2_grpc
+    except ImportError:
+        pass
+
+    # Fallback for generated stubs that use `import mt5_pb2` (top-level import).
+    # Ensure proto/mt5/v1 is on sys.path so mt5_pb2_grpc can resolve mt5_pb2.
+    candidates = [
+        Path(__file__).resolve().parent.parent / "proto" / "mt5" / "v1",
+        Path(getattr(sys, "_MEIPASS", "")) / "proto" / "mt5" / "v1",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            candidate_str = str(candidate)
+            if candidate_str not in sys.path:
+                sys.path.insert(0, candidate_str)
+            try:
+                import mt5_pb2 as _mt5_pb2
+                import mt5_pb2_grpc as _mt5_pb2_grpc
+                return _mt5_pb2, _mt5_pb2_grpc
+            except ImportError:
+                continue
+
+    return None, None
+
+
+mt5_pb2, mt5_pb2_grpc = _load_proto_modules()
+if mt5_pb2 is None or mt5_pb2_grpc is None:
+    logger.warning("Proto files not generated/importable yet. Run: bash generate_proto.sh")
 
 
 class BrokerClient:
@@ -33,7 +60,7 @@ class BrokerClient:
     def connect(self) -> bool:
         """Connect to broker service."""
         if mt5_pb2 is None:
-            logger.error("Proto files not generated. Run: bash generate_proto.sh")
+            logger.error("Proto files not generated/importable. Run: bash generate_proto.sh")
             return False
 
         try:

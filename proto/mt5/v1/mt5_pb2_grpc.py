@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import mt5_pb2 as mt5__pb2
+from . import mt5_pb2 as mt5__pb2
 
 
 class MT5IngressServiceStub(object):
