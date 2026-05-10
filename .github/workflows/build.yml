@@ -35,23 +35,44 @@ jobs:
           if (Test-Path "broker_service/proto/mt5/v1/mt5.proto") {
             "proto_file=broker_service/proto/mt5/v1/mt5.proto" >> $env:GITHUB_OUTPUT
             "proto_dir=broker_service/proto/mt5/v1" >> $env:GITHUB_OUTPUT
+            "has_proto=true" >> $env:GITHUB_OUTPUT
           } elseif (Test-Path "../broker_service/proto/mt5/v1/mt5.proto") {
             "proto_file=../broker_service/proto/mt5/v1/mt5.proto" >> $env:GITHUB_OUTPUT
             "proto_dir=../broker_service/proto/mt5/v1" >> $env:GITHUB_OUTPUT
+            "has_proto=true" >> $env:GITHUB_OUTPUT
+          } elseif (Test-Path "proto/mt5/v1/mt5.proto") {
+            "proto_file=proto/mt5/v1/mt5.proto" >> $env:GITHUB_OUTPUT
+            "proto_dir=proto/mt5/v1" >> $env:GITHUB_OUTPUT
+            "has_proto=true" >> $env:GITHUB_OUTPUT
+          } elseif (Test-Path "broker_agent/proto/mt5/v1/mt5.proto") {
+            "proto_file=broker_agent/proto/mt5/v1/mt5.proto" >> $env:GITHUB_OUTPUT
+            "proto_dir=broker_agent/proto/mt5/v1" >> $env:GITHUB_OUTPUT
+            "has_proto=true" >> $env:GITHUB_OUTPUT
           } else {
-            throw "mt5.proto not found"
+            "has_proto=false" >> $env:GITHUB_OUTPUT
           }
 
       - name: Install dependencies
         run: pip install -r ${{ steps.paths.outputs.agent_dir }}/requirements.txt
 
       - name: Generate gRPC stubs
+        if: steps.paths.outputs.has_proto == 'true'
         run: |
           python -m grpc_tools.protoc \
             --proto_path=${{ steps.paths.outputs.proto_dir }} \
             --python_out=${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1 \
             --grpc_python_out=${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1 \
             ${{ steps.paths.outputs.proto_file }}
+
+      - name: Verify generated stubs exist when proto is absent
+        if: steps.paths.outputs.has_proto != 'true'
+        shell: pwsh
+        run: |
+          $pb2 = "${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1/mt5_pb2.py"
+          $grpc = "${{ steps.paths.outputs.agent_dir }}/proto/mt5/v1/mt5_pb2_grpc.py"
+          if (!(Test-Path $pb2) -or !(Test-Path $grpc)) {
+            throw "mt5.proto not found and generated stubs are missing ($pb2, $grpc)"
+          }
 
       - name: Build with PyInstaller
         run: |
