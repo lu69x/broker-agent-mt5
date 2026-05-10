@@ -73,6 +73,22 @@ class MT5Connector:
         """Check if connected to MT5."""
         return self._connected and mt5 and mt5.terminal_info() is not None
 
+    @staticmethod
+    def _to_unix_ts(value: Any) -> int:
+        """Convert MT5 time-like values to unix seconds safely."""
+        if value is None:
+            return 0
+        if isinstance(value, datetime):
+            return int(value.timestamp())
+        if isinstance(value, (int, float)):
+            return int(value)
+        if hasattr(value, "timestamp"):
+            try:
+                return int(value.timestamp())
+            except Exception:
+                return 0
+        return 0
+
     def get_account(self) -> Optional[Dict[str, Any]]:
         """Get account information."""
         if not self.connected:
@@ -125,8 +141,8 @@ class MT5Connector:
                 "profit": pos.profit,
                 "comment": pos.comment,
                 "magic": pos.magic,
-                "time": int(pos.time.timestamp()),
-                "time_update": int(pos.time_update.timestamp()),
+                "time": self._to_unix_ts(pos.time),
+                "time_update": self._to_unix_ts(pos.time_update),
             }
             for pos in positions
         ]
@@ -153,7 +169,7 @@ class MT5Connector:
                 "tp": order.tp,
                 "magic": order.magic,
                 "comment": order.comment,
-                "time_setup": int(order.time_setup.timestamp()),
+                "time_setup": self._to_unix_ts(order.time_setup),
                 "time_done": 0,  # Open orders have no time_done
             }
             for order in orders
@@ -186,8 +202,8 @@ class MT5Connector:
                 "tp": order.tp,
                 "magic": order.magic,
                 "comment": order.comment,
-                "time_setup": int(order.time_setup.timestamp()),
-                "time_done": int(order.time_done.timestamp()) if order.time_done else 0,
+                "time_setup": self._to_unix_ts(order.time_setup),
+                "time_done": self._to_unix_ts(order.time_done),
             }
             for order in orders
         ]
@@ -202,7 +218,7 @@ class MT5Connector:
             return None
 
         return {
-            "time": int(tick.time.timestamp()),
+            "time": self._to_unix_ts(tick.time),
             "bid": tick.bid,
             "ask": tick.ask,
             "last": tick.last,
