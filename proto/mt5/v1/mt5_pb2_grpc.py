@@ -174,3 +174,100 @@ class MT5IngressService(object):
             mt5__pb2.ConnectionStatus.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+
+class MT5BrokerServiceStub(object):
+    """MT5BrokerService is the broker->agent pull contract.
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetAccountInfo = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetAccountInfo',
+                request_serializer=mt5__pb2.GetAccountInfoRequest.SerializeToString,
+                response_deserializer=mt5__pb2.AccountInfoResponse.FromString,
+                )
+        self.GetSymbolTick = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetSymbolTick',
+                request_serializer=mt5__pb2.GetSymbolTickRequest.SerializeToString,
+                response_deserializer=mt5__pb2.SymbolTickResponse.FromString,
+                )
+
+
+class MT5BrokerServiceServicer(object):
+    """MT5BrokerService is the broker->agent pull contract.
+    """
+
+    def GetAccountInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSymbolTick(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_MT5BrokerServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetAccountInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAccountInfo,
+                    request_deserializer=mt5__pb2.GetAccountInfoRequest.FromString,
+                    response_serializer=mt5__pb2.AccountInfoResponse.SerializeToString,
+            ),
+            'GetSymbolTick': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSymbolTick,
+                    request_deserializer=mt5__pb2.GetSymbolTickRequest.FromString,
+                    response_serializer=mt5__pb2.SymbolTickResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'mt5.v1.MT5BrokerService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class MT5BrokerService(object):
+    """MT5BrokerService is the broker->agent pull contract.
+    """
+
+    @staticmethod
+    def GetAccountInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetAccountInfo',
+            mt5__pb2.GetAccountInfoRequest.SerializeToString,
+            mt5__pb2.AccountInfoResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetSymbolTick(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetSymbolTick',
+            mt5__pb2.GetSymbolTickRequest.SerializeToString,
+            mt5__pb2.SymbolTickResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -66,6 +66,8 @@ def load_cfg_file(cfg_path: Path) -> dict:
         "agent": {
             "id": agent_section.get("agentId", agent_section.get("id", "agent-001")),
             "name": agent_section.get("agentName", agent_section.get("name", "MT5 Agent")),
+            "grpc_host": agent_section.get("grpc_host", "0.0.0.0"),
+            "grpc_port": int(agent_section.get("grpc_port", "50051")),
             "heartbeat_interval": int(agent_section.get("heartbeat_interval", "30")),
             "lease_seconds": int(agent_section.get("lease_seconds", "60")),
             "auth_poll_interval": int(agent_section.get("auth_poll_interval", "5")),

@@ -7,6 +7,7 @@ import time
 
 from .mt5_connector import MT5Connector
 from .grpc_client import BrokerClient
+from .pull_server import PullRPCServer
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,6 +31,9 @@ class MT5Agent:
 
         self.mt5 = MT5Connector(config)
         self.broker = BrokerClient(config)
+        self.pull_host = self.agent_config.get("grpc_host", "0.0.0.0")
+        self.pull_port = int(self.agent_config.get("grpc_port", 50051))
+        self.pull_server = PullRPCServer(self.mt5, self.pull_host, self.pull_port, self.config.get("broker", {}).get("internal_token", ""))
 
         self._running = False
         self._tasks = []
@@ -57,6 +61,7 @@ class MT5Agent:
             raise RuntimeError("Session registration failed")
 
         logger.info(f"Session registered: {result.get('state')}")
+        self.pull_server.start()
 
         self._running = True
 
@@ -80,6 +85,7 @@ class MT5Agent:
         await asyncio.gather(*self._tasks, return_exceptions=True)
 
         # Disconnect
+        self.pull_server.stop()
         self.broker.disconnect()
         self.mt5.disconnect()
 
