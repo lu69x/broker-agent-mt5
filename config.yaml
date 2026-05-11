@@ -19,6 +19,6 @@ mt5:
 
 # Data Collection
 collection:
-  interval: 5  # seconds between snapshot publishing
+  interval: 5  # reserved for future pull extensions
   symbols: ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
   timeframes: ["M1", "M5", "H1"]

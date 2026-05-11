@@ -27,11 +27,6 @@ class MT5IngressServiceStub(object):
                 request_serializer=mt5__pb2.HeartbeatRequest.SerializeToString,
                 response_deserializer=mt5__pb2.ConnectionStatus.FromString,
                 )
-        self.PublishSnapshot = channel.unary_unary(
-                '/mt5.v1.MT5IngressService/PublishSnapshot',
-                request_serializer=mt5__pb2.PublishSnapshotRequest.SerializeToString,
-                response_deserializer=mt5__pb2.ConnectionStatus.FromString,
-                )
         self.GetStatus = channel.unary_unary(
                 '/mt5.v1.MT5IngressService/GetStatus',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -58,13 +53,6 @@ class MT5IngressServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def PublishSnapshot(self, request, context):
-        """PublishSnapshot pushes MT5 data snapshot to the broker
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def GetStatus(self, request, context):
         """GetStatus returns current connection status
         """
@@ -83,11 +71,6 @@ def add_MT5IngressServiceServicer_to_server(servicer, server):
             'Heartbeat': grpc.unary_unary_rpc_method_handler(
                     servicer.Heartbeat,
                     request_deserializer=mt5__pb2.HeartbeatRequest.FromString,
-                    response_serializer=mt5__pb2.ConnectionStatus.SerializeToString,
-            ),
-            'PublishSnapshot': grpc.unary_unary_rpc_method_handler(
-                    servicer.PublishSnapshot,
-                    request_deserializer=mt5__pb2.PublishSnapshotRequest.FromString,
                     response_serializer=mt5__pb2.ConnectionStatus.SerializeToString,
             ),
             'GetStatus': grpc.unary_unary_rpc_method_handler(
@@ -137,23 +120,6 @@ class MT5IngressService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5IngressService/Heartbeat',
             mt5__pb2.HeartbeatRequest.SerializeToString,
-            mt5__pb2.ConnectionStatus.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def PublishSnapshot(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5IngressService/PublishSnapshot',
-            mt5__pb2.PublishSnapshotRequest.SerializeToString,
             mt5__pb2.ConnectionStatus.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

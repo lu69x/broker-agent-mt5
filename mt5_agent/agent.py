@@ -68,7 +68,6 @@ class MT5Agent:
         # Start background tasks
         self._tasks = [
             asyncio.create_task(self._heartbeat_loop()),
-            asyncio.create_task(self._snapshot_loop()),
         ]
 
     async def stop(self):
@@ -110,78 +109,6 @@ class MT5Agent:
                 logger.error(f"Heartbeat error: {e}")
 
             await asyncio.sleep(self.heartbeat_interval)
-
-    async def _snapshot_loop(self):
-        """Collect and publish MT5 data periodically."""
-        while self._running:
-            try:
-                snapshot = await self._collect_snapshot()
-                result = self.broker.publish_snapshot(snapshot)
-                if result.get("success"):
-                    logger.debug(f"Snapshot published: {result.get('state')}")
-                else:
-                    logger.warning(f"Snapshot publish failed: {result.get('error')}")
-            except Exception as e:
-                logger.error(f"Snapshot error: {e}")
-
-            await asyncio.sleep(self.collection_interval)
-
-    async def _collect_snapshot(self) -> dict:
-        """Collect MT5 data snapshot."""
-        snapshot = {
-            "agent_id": self.agent_id,
-        }
-
-        # Collect account info
-        if account := self.mt5.get_account():
-            snapshot["account"] = account
-            logger.debug(f"Account: {account['login']} - Equity: {account['equity']}")
-
-        # Collect positions
-        snapshot["positions"] = self.mt5.get_positions()
-        if snapshot["positions"]:
-            logger.debug(f"Positions: {len(snapshot['positions'])}")
-
-        # Collect orders
-        snapshot["open_orders"] = self.mt5.get_orders()
-        snapshot["history_orders"] = self.mt5.get_history_orders()
-        logger.debug(f"Open orders: {len(snapshot['open_orders'])}, History: {len(snapshot['history_orders'])}")
-
-        # Collect symbols data
-        symbols = self.collection_config.get("symbols", ["EURUSD"])
-        timeframes = self.collection_config.get("timeframes", ["M1"])
-
-        ticks = []
-        symbol_infos = []
-        rates = []
-
-        for symbol in symbols:
-            # Tick
-            if tick := self.mt5.get_symbol_tick(symbol):
-                ticks.append({"symbol": symbol, "tick": tick})
-
-            # Symbol info
-            if info := self.mt5.get_symbol_info(symbol):
-                symbol_infos.append(info)
-
-            # Rates
-            for tf in timeframes:
-                rate_values = self.mt5.get_rates(symbol, tf, count=100)
-                if rate_values:
-                    rates.append({
-                        "symbol": symbol,
-                        "timeframe": tf,
-                        "values": rate_values,
-                    })
-
-        snapshot["ticks"] = ticks
-        snapshot["symbol_infos"] = symbol_infos
-        snapshot["rates"] = rates
-
-        # Balances (empty for now - can be calculated from account)
-        snapshot["balances"] = []
-
-        return snapshot
 
     async def _register_with_authorization_wait(self) -> dict:
         """Attempt registration and poll while waiting for broker authorization."""

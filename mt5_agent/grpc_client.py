@@ -143,26 +143,6 @@ class BrokerClient:
             logger.error(f"Heartbeat error: {e}")
             return {"success": False, "error": str(e)}
 
-    def publish_snapshot(self, snapshot: dict) -> dict:
-        """Publish MT5 data snapshot."""
-        if not self.stub:
-            return {"success": False, "error": "Not connected"}
-
-        try:
-            request = self._build_snapshot_request(snapshot)
-            response = self.stub.PublishSnapshot(request, metadata=self._metadata())
-            return {
-                "success": True,
-                "state": response.state,
-                "last_error": response.last_error,
-            }
-        except grpc.RpcError as e:
-            logger.error(f"PublishSnapshot failed: {e.code()} - {e.details()}")
-            return {"success": False, "error": str(e)}
-        except Exception as e:
-            logger.error(f"PublishSnapshot error: {e}")
-            return {"success": False, "error": str(e)}
-
     def get_status(self) -> dict:
         """Get connection status."""
         if not self.stub:
@@ -188,52 +168,6 @@ class BrokerClient:
         except Exception as e:
             logger.error(f"GetStatus error: {e}")
             return {"success": False, "error": str(e)}
-
-    def _build_snapshot_request(self, snapshot: dict) -> "mt5_pb2.PublishSnapshotRequest":
-        """Build PublishSnapshotRequest from dict."""
-        request = mt5_pb2.PublishSnapshotRequest(agent_id=snapshot["agent_id"])
-
-        # Account info
-        if account := snapshot.get("account"):
-            request.account.CopyFrom(self._build_account(account))
-
-        # Positions
-        for pos in snapshot.get("positions", []):
-            request.positions.append(self._build_position(pos))
-
-        # Balances
-        for bal in snapshot.get("balances", []):
-            request.balances.append(self._build_balance(bal))
-
-        # Open orders
-        for order in snapshot.get("open_orders", []):
-            request.open_orders.append(self._build_order(order))
-
-        # History orders
-        for order in snapshot.get("history_orders", []):
-            request.history_orders.append(self._build_order(order))
-
-        # Ticks
-        for tick_envelope in snapshot.get("ticks", []):
-            env = mt5_pb2.SymbolTickEnvelope(symbol=tick_envelope["symbol"])
-            env.tick.CopyFrom(self._build_tick(tick_envelope["tick"]))
-            request.ticks.append(env)
-
-        # Rates
-        for rates_envelope in snapshot.get("rates", []):
-            env = mt5_pb2.RatesEnvelope(
-                symbol=rates_envelope["symbol"],
-                timeframe=rates_envelope["timeframe"],
-            )
-            for rate in rates_envelope["values"]:
-                env.values.append(self._build_rate(rate))
-            request.rates.append(env)
-
-        # Symbol infos
-        for info in snapshot.get("symbol_infos", []):
-            request.symbol_infos.append(self._build_symbol_info(info))
-
-        return request
 
     def _build_account(self, acc: dict) -> "mt5_pb2.AccountInfo":
         return mt5_pb2.AccountInfo(

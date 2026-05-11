@@ -76,7 +76,7 @@ Expected:
 
 Expected:
 - `Session registered` appears quickly.
-- Heartbeat and snapshot logs continue normally.
+- Heartbeat and pull RPC logs continue normally.
 
 5. (Optional) Set wrong `internal_token` in `broker.cfg` and rerun.
 
