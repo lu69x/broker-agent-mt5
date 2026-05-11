@@ -195,6 +195,8 @@ class MT5Agent:
                 agent_id=self.agent_id,
                 agent_name=self.agent_name,
                 lease_seconds=self.lease_seconds,
+                host=self.pull_host,
+                port=str(self.pull_port),
             )
 
             if result.get("success"):

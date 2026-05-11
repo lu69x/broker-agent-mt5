@@ -87,7 +87,7 @@ class BrokerClient:
             return [("x-internal-token", self.token)]
         return []
 
-    def register_session(self, agent_id: str, agent_name: str, lease_seconds: int = 60) -> dict:
+    def register_session(self, agent_id: str, agent_name: str, lease_seconds: int = 60, host: str = "", port: str = "") -> dict:
         """Register agent session."""
         if not self.stub:
             return {"success": False, "error": "Not connected"}
@@ -97,6 +97,8 @@ class BrokerClient:
                 agent_id=agent_id,
                 agent_name=agent_name,
                 lease_seconds=lease_seconds,
+                host=host,
+                port=port,
             )
             response = self.stub.RegisterSession(request, metadata=self._metadata())
             return {
