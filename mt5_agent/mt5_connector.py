@@ -323,7 +323,8 @@ class MT5Connector:
             req["order"] = int(req.get("order") or 0)
 
         # Close-by-position flow for hedging accounts.
-        if int(req.get("position") or 0) > 0:
+        # Apply only for market deal actions; SL/TP updates also carry "position".
+        if int(req.get("position") or 0) > 0 and int(req.get("action") or 0) == int(getattr(mt5, "TRADE_ACTION_DEAL", 1)):
             pos_id = int(req.get("position"))
             positions = mt5.positions_get(ticket=pos_id) or []
             if not positions:
