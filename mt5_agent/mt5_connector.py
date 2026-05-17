@@ -271,6 +271,13 @@ class MT5Connector:
         if not self.connected:
             return []
 
+        symbol = str(symbol or "").upper()
+        if symbol:
+            try:
+                mt5.symbol_select(symbol, True)
+            except Exception:
+                pass
+
         # Map timeframe string to MT5 constant
         tf_map = {
             "M1": mt5.TIMEFRAME_M1,
@@ -285,6 +292,8 @@ class MT5Connector:
 
         rates = mt5.copy_rates_from_pos(symbol, tf, 0, count)
         if rates is None:
+            err = mt5.last_error()
+            logger.warning(f"copy_rates_from_pos returned None for {symbol} {timeframe}, last_error={err}")
             return []
 
         return [
