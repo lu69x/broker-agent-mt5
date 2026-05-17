@@ -307,12 +307,6 @@ class MT5Connector:
             return {}
         req = dict(payload or {})
         symbol = str(req.get("symbol", "") or "").upper()
-        if symbol:
-            req["symbol"] = symbol
-            try:
-                mt5.symbol_select(symbol, True)
-            except Exception:
-                pass
 
         # Normalize numeric fields.
         if "volume" in req:
@@ -323,6 +317,56 @@ class MT5Connector:
             req["type"] = int(req.get("type") or 0)
         if "action" in req:
             req["action"] = int(req.get("action") or 0)
+        if "position" in req:
+            req["position"] = int(req.get("position") or 0)
+        if "order" in req:
+            req["order"] = int(req.get("order") or 0)
+
+        # Close-by-position flow for hedging accounts.
+        if int(req.get("position") or 0) > 0:
+            pos_id = int(req.get("position"))
+            positions = mt5.positions_get(ticket=pos_id) or []
+            if not positions:
+                all_pos = mt5.positions_get() or []
+                tickets = [int(getattr(p, "ticket", 0) or 0) for p in all_pos]
+                logger.error(f"close by position failed: ticket {pos_id} not found, open_tickets={tickets}")
+                return {
+                    "retcode": -1,
+                    "deal": 0,
+                    "order": 0,
+                    "volume": 0.0,
+                    "price": 0.0,
+                    "bid": 0.0,
+                    "ask": 0.0,
+                    "comment": f"position ticket not found: {pos_id}",
+                    "request_id": 0,
+                    "retcode_external": 0,
+                }
+
+            pos = positions[0]
+            symbol = str(getattr(pos, "symbol", "") or "").upper()
+            if symbol:
+                try:
+                    mt5.symbol_select(symbol, True)
+                except Exception:
+                    pass
+
+            pos_type = int(getattr(pos, "type", 0) or 0)
+            close_type = mt5.ORDER_TYPE_SELL if pos_type == mt5.POSITION_TYPE_BUY else mt5.ORDER_TYPE_BUY
+            tick = mt5.symbol_info_tick(symbol) if symbol else None
+            close_price = 0.0
+            if tick is not None:
+                close_price = float(tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask)
+
+            req = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": float(req.get("volume") or getattr(pos, "volume", 0.0) or 0.0),
+                "type": int(close_type),
+                "position": int(getattr(pos, "ticket", 0) or 0),
+                "price": close_price,
+                "deviation": int(req.get("deviation") or 20),
+            }
 
         # Market deal without explicit price is often rejected by brokers.
         if req.get("action") == getattr(mt5, "TRADE_ACTION_DEAL", 1) and float(req.get("price") or 0.0) <= 0:
@@ -337,6 +381,10 @@ class MT5Connector:
             req.setdefault("type_time", mt5.ORDER_TIME_GTC)
         if hasattr(mt5, "ORDER_FILLING_IOC"):
             req.setdefault("type_filling", mt5.ORDER_FILLING_IOC)
+
+        symbol = str(req.get("symbol", "") or "").upper()
+        if symbol:
+            req["symbol"] = symbol
 
         logger.info(f"order_send request: {req}")
         result = mt5.order_send(req)
