@@ -5,6 +5,7 @@ Reverse-stream client for MT5IngressService.Connect.
 import queue
 import sys
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -207,7 +208,7 @@ class BrokerClient:
                     success, result_payload, err_msg = False, {}, str(e)
 
                 out_struct = Struct()
-                out_struct.update(result_payload or {})
+                out_struct.update(self._proto_compatible(result_payload or {}))
                 self._outgoing.put(
                     mt5_pb2.AgentMessage(
                         result=mt5_pb2.AgentCommandResult(
@@ -227,6 +228,30 @@ class BrokerClient:
         finally:
             self._stream_running = False
             self._ready_event.set()
+
+    def _proto_compatible(self, value: Any) -> Any:
+        """Normalize payload into protobuf Struct-compatible primitives."""
+        if value is None:
+            return None
+        if isinstance(value, (str, bool, int, float)):
+            return value
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {str(k): self._proto_compatible(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._proto_compatible(v) for v in value]
+
+        # Handle numpy / scalar-like values.
+        item = getattr(value, "item", None)
+        if callable(item):
+            try:
+                return self._proto_compatible(item())
+            except Exception:
+                pass
+
+        # Last-resort fallback keeps stream alive instead of crashing.
+        return str(value)
 
     def get_status(self) -> dict:
         if not self.stub:
