@@ -321,6 +321,35 @@ class MT5Connector:
             "retcode_external": int(getattr(result, "retcode_external", 0) or 0),
         }
 
+    def order_check(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Check trade request via MT5 order_check()."""
+        if not self.connected:
+            return {}
+        if not hasattr(mt5, "order_check"):
+            return {
+                "retcode": 0,
+                "balance": 0.0,
+                "equity": 0.0,
+                "profit": 0.0,
+                "margin": 0.0,
+                "margin_free": 0.0,
+                "margin_level": 0.0,
+                "comment": "order_check not available",
+            }
+        result = mt5.order_check(payload)
+        if result is None:
+            return {}
+        return {
+            "retcode": int(getattr(result, "retcode", 0) or 0),
+            "balance": float(getattr(result, "balance", 0.0) or 0.0),
+            "equity": float(getattr(result, "equity", 0.0) or 0.0),
+            "profit": float(getattr(result, "profit", 0.0) or 0.0),
+            "margin": float(getattr(result, "margin", 0.0) or 0.0),
+            "margin_free": float(getattr(result, "margin_free", 0.0) or 0.0),
+            "margin_level": float(getattr(result, "margin_level", 0.0) or 0.0),
+            "comment": str(getattr(result, "comment", "") or ""),
+        }
+
     def order_cancel(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Cancel order by sending REMOVE action through order_send()."""
         if not self.connected:

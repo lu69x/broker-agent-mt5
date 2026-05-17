@@ -1,17 +1,23 @@
 """gRPC Client for Broker Service.
 
-Communicates with MT5IngressService on the broker.
+Reverse-stream client for MT5IngressService.Connect.
 """
+import queue
 import sys
+import threading
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import grpc
 from google.protobuf import empty_pb2
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.struct_pb2 import Struct
 
 from .logger import get_logger
 
 logger = get_logger(__name__)
+
+
 
 def _load_proto_modules():
     """Load generated proto modules with fallbacks for packaged Windows builds."""
@@ -21,8 +27,6 @@ def _load_proto_modules():
     except ImportError:
         pass
 
-    # Fallback for generated stubs that use `import mt5_pb2` (top-level import).
-    # Ensure proto/mt5/v1 is on sys.path so mt5_pb2_grpc can resolve mt5_pb2.
     candidates = [
         Path(__file__).resolve().parent.parent / "proto" / "mt5" / "v1",
         Path(getattr(sys, "_MEIPASS", "")) / "proto" / "mt5" / "v1",
@@ -57,6 +61,12 @@ class BrokerClient:
         self.channel: Optional[grpc.Channel] = None
         self.stub = None
 
+        self._stream_thread: Optional[threading.Thread] = None
+        self._stream_running = False
+        self._ready_event = threading.Event()
+        self._last_error = ""
+        self._outgoing: "queue.Queue[Optional[Any]]" = queue.Queue()
+
     def connect(self) -> bool:
         """Connect to broker service."""
         if mt5_pb2 is None:
@@ -75,6 +85,7 @@ class BrokerClient:
 
     def disconnect(self):
         """Disconnect from broker service."""
+        self.stop_stream()
         if self.channel:
             self.channel.close()
             self.channel = None
@@ -82,69 +93,142 @@ class BrokerClient:
             logger.info("Disconnected from broker")
 
     def _metadata(self) -> list[tuple[str, str]]:
-        """Create request metadata with auth token."""
         if self.token:
             return [("x-internal-token", self.token)]
         return []
 
-    def register_session(self, agent_id: str, agent_name: str, lease_seconds: int = 60, host: str = "", port: str = "") -> dict:
-        """Register agent session."""
+    def start_reverse_stream(
+        self,
+        agent_id: str,
+        agent_name: str,
+        lease_seconds: int,
+        startup_timeout: int,
+        command_handler: Callable[[str, dict], tuple[bool, dict, str]],
+    ) -> dict:
+        """Open reverse stream and wait for broker ack."""
         if not self.stub:
             return {"success": False, "error": "Not connected"}
 
-        try:
-            request = mt5_pb2.RegisterSessionRequest(
-                agent_id=agent_id,
-                agent_name=agent_name,
-                lease_seconds=lease_seconds,
-                host=host,
-                port=port,
-            )
-            response = self.stub.RegisterSession(request, metadata=self._metadata())
-            return {
-                "success": True,
-                "state": response.state,
-                "agent_id": response.agent_id,
-                "agent_name": response.agent_name,
-                "last_error": response.last_error,
-            }
-        except grpc.RpcError as e:
-            logger.error(f"RegisterSession failed: {e.code()} - {e.details()}")
-            return {
-                "success": False,
-                "error": str(e),
-                "code": str(e.code()),
-                "details": e.details(),
-            }
-        except Exception as e:
-            logger.error(f"RegisterSession error: {e}")
-            return {"success": False, "error": str(e)}
+        self._ready_event.clear()
+        self._last_error = ""
+        self._stream_running = True
 
-    def heartbeat(self, agent_id: str, lease_seconds: int = 60) -> dict:
-        """Send heartbeat to refresh lease."""
-        if not self.stub:
-            return {"success": False, "error": "Not connected"}
-
-        try:
-            request = mt5_pb2.HeartbeatRequest(
-                agent_id=agent_id,
-                lease_seconds=lease_seconds,
+        self._outgoing.put(
+            mt5_pb2.AgentMessage(
+                hello=mt5_pb2.AgentHello(
+                    agent_id=agent_id,
+                    agent_name=agent_name,
+                    lease_seconds=lease_seconds,
+                    agent_version="1.0.0",
+                )
             )
-            response = self.stub.Heartbeat(request, metadata=self._metadata())
-            return {
-                "success": True,
-                "state": response.state,
-                "last_error": response.last_error,
-            }
+        )
+
+        self._stream_thread = threading.Thread(
+            target=self._stream_loop,
+            args=(command_handler,),
+            daemon=True,
+        )
+        self._stream_thread.start()
+
+        if not self._ready_event.wait(timeout=max(1, startup_timeout)):
+            self.stop_stream()
+            err = self._last_error or "reverse stream startup timeout"
+            return {"success": False, "error": err}
+
+        return {"success": True, "state": "connected"}
+
+    def stop_stream(self):
+        if not self._stream_running:
+            return
+        self._stream_running = False
+        self._outgoing.put(None)
+        if self._stream_thread and self._stream_thread.is_alive():
+            self._stream_thread.join(timeout=2)
+        self._stream_thread = None
+
+    def stream_alive(self) -> bool:
+        return self._stream_running and self._stream_thread is not None and self._stream_thread.is_alive()
+
+    def send_heartbeat(self, lease_seconds: int = 60):
+        if not self.stream_alive():
+            return
+        self._outgoing.put(
+            mt5_pb2.AgentMessage(
+                heartbeat=mt5_pb2.AgentHeartbeat(
+                    lease_seconds=lease_seconds,
+                )
+            )
+        )
+
+    def publish_event(self, event_id: str, event_type: str, payload: dict):
+        if not self.stream_alive():
+            return
+        struct_payload = Struct()
+        struct_payload.update(payload or {})
+        self._outgoing.put(
+            mt5_pb2.AgentMessage(
+                event=mt5_pb2.AgentEvent(
+                    event_id=event_id,
+                    event_type=event_type,
+                    payload=struct_payload,
+                )
+            )
+        )
+
+    def get_last_error(self) -> str:
+        return self._last_error
+
+    def _request_iter(self):
+        while self._stream_running:
+            item = self._outgoing.get()
+            if item is None:
+                return
+            yield item
+
+    def _stream_loop(self, command_handler: Callable[[str, dict], tuple[bool, dict, str]]):
+        try:
+            stream = self.stub.Connect(self._request_iter(), metadata=self._metadata())
+            for incoming in stream:
+                body = incoming.WhichOneof("body")
+                if body == "ack":
+                    self._ready_event.set()
+                    logger.info("Broker stream acknowledged")
+                    continue
+                if body != "command":
+                    continue
+
+                command = incoming.command
+                payload = MessageToDict(command.payload, preserving_proto_field_name=True) if command.payload else {}
+
+                try:
+                    success, result_payload, err_msg = command_handler(command.command_type, payload)
+                except Exception as e:
+                    success, result_payload, err_msg = False, {}, str(e)
+
+                out_struct = Struct()
+                out_struct.update(result_payload or {})
+                self._outgoing.put(
+                    mt5_pb2.AgentMessage(
+                        result=mt5_pb2.AgentCommandResult(
+                            command_id=command.command_id,
+                            success=bool(success),
+                            payload=out_struct,
+                            error=err_msg or "",
+                        )
+                    )
+                )
         except grpc.RpcError as e:
-            logger.error(f"Heartbeat failed: {e.code()} - {e.details()}")
-            return {"success": False, "error": str(e)}
+            self._last_error = f"{e.code()}: {e.details()}"
+            logger.error(f"Reverse stream failed: {self._last_error}")
         except Exception as e:
-            logger.error(f"Heartbeat error: {e}")
-            return {"success": False, "error": str(e)}
+            self._last_error = str(e)
+            logger.error(f"Reverse stream error: {e}")
+        finally:
+            self._stream_running = False
+            self._ready_event.set()
 
     def get_status(self) -> dict:
-        """Get connection status."""
         if not self.stub:
             return {"success": False, "error": "Not connected"}
 
@@ -168,105 +252,3 @@ class BrokerClient:
         except Exception as e:
             logger.error(f"GetStatus error: {e}")
             return {"success": False, "error": str(e)}
-
-    def _build_account(self, acc: dict) -> "mt5_pb2.AccountInfo":
-        return mt5_pb2.AccountInfo(
-            login=acc.get("login", 0),
-            leverage=acc.get("leverage", 0),
-            balance=acc.get("balance", 0.0),
-            equity=acc.get("equity", 0.0),
-            margin=acc.get("margin", 0.0),
-            margin_free=acc.get("margin_free", 0.0),
-            margin_level=acc.get("margin_level", 0.0),
-            profit=acc.get("profit", 0.0),
-            currency=acc.get("currency", ""),
-            server=acc.get("server", ""),
-            company=acc.get("company", ""),
-            trade_allowed=acc.get("trade_allowed", False),
-            trade_expert=acc.get("trade_expert", False),
-            limit_orders=acc.get("limit_orders", 0),
-            margin_so_call=acc.get("margin_so_call", 0.0),
-            margin_so_so=acc.get("margin_so_so", 0.0),
-            currency_digits=acc.get("currency_digits", 0),
-        )
-
-    def _build_position(self, pos: dict) -> "mt5_pb2.Position":
-        return mt5_pb2.Position(
-            ticket=pos.get("ticket", 0),
-            symbol=pos.get("symbol", ""),
-            type=pos.get("type", 0),
-            volume=pos.get("volume", 0.0),
-            price_open=pos.get("price_open", 0.0),
-            price_current=pos.get("price_current", 0.0),
-            sl=pos.get("sl", 0.0),
-            tp=pos.get("tp", 0.0),
-            swap=pos.get("swap", 0.0),
-            profit=pos.get("profit", 0.0),
-            comment=pos.get("comment", ""),
-            magic=pos.get("magic", 0),
-            time=pos.get("time", 0),
-            time_update=pos.get("time_update", 0),
-        )
-
-    def _build_balance(self, bal: dict) -> "mt5_pb2.BalanceEntry":
-        return mt5_pb2.BalanceEntry(
-            asset=bal.get("asset", ""),
-            free=bal.get("free", 0.0),
-            locked=bal.get("locked", 0.0),
-            total=bal.get("total", 0.0),
-        )
-
-    def _build_order(self, order: dict) -> "mt5_pb2.TradeOrder":
-        return mt5_pb2.TradeOrder(
-            ticket=order.get("ticket", 0),
-            symbol=order.get("symbol", ""),
-            type=order.get("type", 0),
-            state=order.get("state", 0),
-            volume_initial=order.get("volume_initial", 0.0),
-            volume_current=order.get("volume_current", 0.0),
-            price_open=order.get("price_open", 0.0),
-            sl=order.get("sl", 0.0),
-            tp=order.get("tp", 0.0),
-            magic=order.get("magic", 0),
-            comment=order.get("comment", ""),
-            time_setup=order.get("time_setup", 0),
-            time_done=order.get("time_done", 0),
-        )
-
-    def _build_tick(self, tick: dict) -> "mt5_pb2.SymbolTick":
-        return mt5_pb2.SymbolTick(
-            time=tick.get("time", 0),
-            bid=tick.get("bid", 0.0),
-            ask=tick.get("ask", 0.0),
-            last=tick.get("last", 0.0),
-            volume=tick.get("volume", 0),
-            time_msc=tick.get("time_msc", 0),
-            flags=tick.get("flags", 0),
-            volume_real=tick.get("volume_real", 0.0),
-        )
-
-    def _build_rate(self, rate: dict) -> "mt5_pb2.Rate":
-        return mt5_pb2.Rate(
-            time=rate.get("time", 0),
-            open=rate.get("open", 0.0),
-            high=rate.get("high", 0.0),
-            low=rate.get("low", 0.0),
-            close=rate.get("close", 0.0),
-            tick_volume=rate.get("tick_volume", 0),
-            spread=rate.get("spread", 0),
-            real_volume=rate.get("real_volume", 0),
-        )
-
-    def _build_symbol_info(self, info: dict) -> "mt5_pb2.SymbolInfo":
-        return mt5_pb2.SymbolInfo(
-            symbol=info.get("symbol", ""),
-            description=info.get("description", ""),
-            currency_base=info.get("currency_base", ""),
-            currency_profit=info.get("currency_profit", ""),
-            digits=info.get("digits", 0),
-            point=info.get("point", 0.0),
-            volume_min=info.get("volume_min", 0.0),
-            volume_max=info.get("volume_max", 0.0),
-            volume_step=info.get("volume_step", 0.0),
-            visible=info.get("visible", False),
-        )

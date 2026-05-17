@@ -33,15 +33,19 @@ def test_connection():
         status = client.get_status()
         print(f"GetStatus response: {status}")
 
-        # Test RegisterSession
-        print("\nTesting RegisterSession...")
+        # Test Reverse Stream Connect
+        print("\nTesting Connect stream...")
         agent_cfg = config["agent"]
-        result = client.register_session(
+        result = client.start_reverse_stream(
             agent_id=agent_cfg["agentId"],
             agent_name=agent_cfg["agentName"],
-            lease_seconds=agent_cfg.getint("lease_seconds", 60)
+            lease_seconds=agent_cfg.getint("lease_seconds", 60),
+            startup_timeout=10,
+            command_handler=lambda _cmd, _payload: (False, {}, "test mode"),
         )
-        print(f"RegisterSession response: {result}")
+        print(f"Connect response: {result}")
+        if result.get("success"):
+            client.send_heartbeat(lease_seconds=agent_cfg.getint("lease_seconds", 60))
 
         client.disconnect()
         print("\n✓ Test completed!")
