@@ -2,7 +2,7 @@
 
 Handles connection to MetaTrader 5 Terminal and data retrieval.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 try:
@@ -295,6 +295,17 @@ class MT5Connector:
             err = mt5.last_error()
             logger.warning(f"copy_rates_from_pos returned None for {symbol} {timeframe}, last_error={err}")
             return []
+        if len(rates) == 0:
+            # Some terminals return empty rates from_pos while from() still works.
+            logger.warning(f"copy_rates_from_pos returned empty for {symbol} {timeframe}, trying copy_rates_from fallback")
+            rates = mt5.copy_rates_from(symbol, tf, datetime.now(timezone.utc), count)
+            if rates is None:
+                err = mt5.last_error()
+                logger.warning(f"copy_rates_from fallback returned None for {symbol} {timeframe}, last_error={err}")
+                return []
+            if len(rates) == 0:
+                logger.warning(f"copy_rates_from fallback returned empty for {symbol} {timeframe}")
+                return []
 
         return [
             {
