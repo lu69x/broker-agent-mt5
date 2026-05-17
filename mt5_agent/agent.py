@@ -154,7 +154,7 @@ class MT5Agent:
                 if from_ts > 0 and to_ts > 0 and to_ts > from_ts:
                     count = min(5000, max(1, int((to_ts - from_ts) / 60)))
                 rates = self.mt5.get_rates(symbol, timeframe, count=count)
-                return True, {"values": rates}, ""
+                return True, {"rates": rates}, ""
 
             if command_type == "GetOpenOrders":
                 symbol = (payload.get("symbol") or "").strip().upper()
