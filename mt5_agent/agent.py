@@ -182,14 +182,26 @@ class MT5Agent:
                 result = self.mt5.order_send(payload)
                 if not result:
                     return False, {}, "mt5 order_send failed"
+                retcode = int(result.get("retcode", 0) or 0)
+                if not self._trade_retcode_ok(retcode):
+                    return False, result, f"order_send failed retcode={retcode} comment={result.get('comment', '')}"
                 return True, result, ""
 
             if command_type == "OrderCancel":
                 result = self.mt5.order_cancel(payload)
                 if not result:
                     return False, {}, "mt5 order_cancel failed"
+                retcode = int(result.get("retcode", 0) or 0)
+                if not self._trade_retcode_ok(retcode):
+                    return False, result, f"order_cancel failed retcode={retcode} comment={result.get('comment', '')}"
                 return True, result, ""
 
             return False, {}, f"unsupported command_type: {command_type}"
         except Exception as e:
             return False, {}, str(e)
+
+    @staticmethod
+    def _trade_retcode_ok(retcode: int) -> bool:
+        # Common MT5 success codes:
+        # 10008: placed, 10009: done, 10010: done partial
+        return retcode in {10008, 10009, 10010}

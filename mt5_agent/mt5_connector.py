@@ -305,9 +305,63 @@ class MT5Connector:
         """Send trade order via MT5 order_send()."""
         if not self.connected:
             return {}
-        result = mt5.order_send(payload)
+        req = dict(payload or {})
+        symbol = str(req.get("symbol", "") or "").upper()
+        if symbol:
+            req["symbol"] = symbol
+            try:
+                mt5.symbol_select(symbol, True)
+            except Exception:
+                pass
+
+        # Normalize numeric fields.
+        if "volume" in req:
+            req["volume"] = float(req.get("volume") or 0.0)
+        if "price" in req:
+            req["price"] = float(req.get("price") or 0.0)
+        if "type" in req:
+            req["type"] = int(req.get("type") or 0)
+        if "action" in req:
+            req["action"] = int(req.get("action") or 0)
+
+        # Market deal without explicit price is often rejected by brokers.
+        if req.get("action") == getattr(mt5, "TRADE_ACTION_DEAL", 1) and float(req.get("price") or 0.0) <= 0:
+            tick = mt5.symbol_info_tick(symbol) if symbol else None
+            if tick is not None:
+                order_type = int(req.get("type") or 0)
+                req["price"] = float(tick.ask if order_type == 0 else tick.bid)
+
+        # Safe defaults for execution constraints.
+        req.setdefault("deviation", 20)
+        if hasattr(mt5, "ORDER_TIME_GTC"):
+            req.setdefault("type_time", mt5.ORDER_TIME_GTC)
+        if hasattr(mt5, "ORDER_FILLING_IOC"):
+            req.setdefault("type_filling", mt5.ORDER_FILLING_IOC)
+
+        logger.info(f"order_send request: {req}")
+        result = mt5.order_send(req)
         if result is None:
-            return {}
+            last_err = mt5.last_error() if hasattr(mt5, "last_error") else ("unknown", "unknown")
+            logger.error(f"order_send returned None, last_error={last_err}")
+            return {
+                "retcode": -1,
+                "deal": 0,
+                "order": 0,
+                "volume": 0.0,
+                "price": float(req.get("price") or 0.0),
+                "bid": 0.0,
+                "ask": 0.0,
+                "comment": f"order_send returned None, last_error={last_err}",
+                "request_id": 0,
+                "retcode_external": 0,
+            }
+        logger.info(
+            "order_send result: retcode=%s comment=%s order=%s deal=%s",
+            getattr(result, "retcode", None),
+            getattr(result, "comment", None),
+            getattr(result, "order", None),
+            getattr(result, "deal", None),
+        )
         return {
             "retcode": int(getattr(result, "retcode", 0) or 0),
             "deal": int(getattr(result, "deal", 0) or 0),
@@ -364,7 +418,9 @@ class MT5Connector:
             req["symbol"] = symbol
         result = mt5.order_send(req)
         if result is None:
-            return {}
+            last_err = mt5.last_error() if hasattr(mt5, "last_error") else ("unknown", "unknown")
+            logger.error(f"order_cancel returned None, last_error={last_err}, req={req}")
+            return {"retcode": -1, "order": order, "comment": f"order_cancel returned None, last_error={last_err}"}
         return {
             "retcode": int(getattr(result, "retcode", 0) or 0),
             "order": order,
