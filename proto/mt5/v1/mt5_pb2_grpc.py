@@ -162,6 +162,46 @@ class MT5BrokerServiceStub(object):
                 request_serializer=mt5__pb2.GetSymbolTickRequest.SerializeToString,
                 response_deserializer=mt5__pb2.SymbolTickResponse.FromString,
                 )
+        self.GetPositions = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetPositions',
+                request_serializer=mt5__pb2.GetPositionsRequest.SerializeToString,
+                response_deserializer=mt5__pb2.PositionsResponse.FromString,
+                )
+        self.GetBalances = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetBalances',
+                request_serializer=mt5__pb2.GetBalancesRequest.SerializeToString,
+                response_deserializer=mt5__pb2.BalancesResponse.FromString,
+                )
+        self.GetSymbolInfo = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetSymbolInfo',
+                request_serializer=mt5__pb2.GetSymbolInfoRequest.SerializeToString,
+                response_deserializer=mt5__pb2.SymbolInfoResponse.FromString,
+                )
+        self.GetRatesRange = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetRatesRange',
+                request_serializer=mt5__pb2.GetRatesRangeRequest.SerializeToString,
+                response_deserializer=mt5__pb2.RatesResponse.FromString,
+                )
+        self.GetOpenOrders = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetOpenOrders',
+                request_serializer=mt5__pb2.GetOpenOrdersRequest.SerializeToString,
+                response_deserializer=mt5__pb2.OpenOrdersResponse.FromString,
+                )
+        self.GetHistoryOrders = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/GetHistoryOrders',
+                request_serializer=mt5__pb2.GetHistoryOrdersRequest.SerializeToString,
+                response_deserializer=mt5__pb2.HistoryOrdersResponse.FromString,
+                )
+        self.OrderSend = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/OrderSend',
+                request_serializer=mt5__pb2.OrderSendRequest.SerializeToString,
+                response_deserializer=mt5__pb2.OrderSendResponse.FromString,
+                )
+        self.OrderCancel = channel.unary_unary(
+                '/mt5.v1.MT5BrokerService/OrderCancel',
+                request_serializer=mt5__pb2.OrderCancelRequest.SerializeToString,
+                response_deserializer=mt5__pb2.OrderCancelResponse.FromString,
+                )
 
 
 class MT5BrokerServiceServicer(object):
@@ -180,6 +220,54 @@ class MT5BrokerServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetPositions(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetBalances(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSymbolInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetRatesRange(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetOpenOrders(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetHistoryOrders(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OrderSend(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OrderCancel(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_MT5BrokerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -192,6 +280,46 @@ def add_MT5BrokerServiceServicer_to_server(servicer, server):
                     servicer.GetSymbolTick,
                     request_deserializer=mt5__pb2.GetSymbolTickRequest.FromString,
                     response_serializer=mt5__pb2.SymbolTickResponse.SerializeToString,
+            ),
+            'GetPositions': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPositions,
+                    request_deserializer=mt5__pb2.GetPositionsRequest.FromString,
+                    response_serializer=mt5__pb2.PositionsResponse.SerializeToString,
+            ),
+            'GetBalances': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetBalances,
+                    request_deserializer=mt5__pb2.GetBalancesRequest.FromString,
+                    response_serializer=mt5__pb2.BalancesResponse.SerializeToString,
+            ),
+            'GetSymbolInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSymbolInfo,
+                    request_deserializer=mt5__pb2.GetSymbolInfoRequest.FromString,
+                    response_serializer=mt5__pb2.SymbolInfoResponse.SerializeToString,
+            ),
+            'GetRatesRange': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRatesRange,
+                    request_deserializer=mt5__pb2.GetRatesRangeRequest.FromString,
+                    response_serializer=mt5__pb2.RatesResponse.SerializeToString,
+            ),
+            'GetOpenOrders': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOpenOrders,
+                    request_deserializer=mt5__pb2.GetOpenOrdersRequest.FromString,
+                    response_serializer=mt5__pb2.OpenOrdersResponse.SerializeToString,
+            ),
+            'GetHistoryOrders': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetHistoryOrders,
+                    request_deserializer=mt5__pb2.GetHistoryOrdersRequest.FromString,
+                    response_serializer=mt5__pb2.HistoryOrdersResponse.SerializeToString,
+            ),
+            'OrderSend': grpc.unary_unary_rpc_method_handler(
+                    servicer.OrderSend,
+                    request_deserializer=mt5__pb2.OrderSendRequest.FromString,
+                    response_serializer=mt5__pb2.OrderSendResponse.SerializeToString,
+            ),
+            'OrderCancel': grpc.unary_unary_rpc_method_handler(
+                    servicer.OrderCancel,
+                    request_deserializer=mt5__pb2.OrderCancelRequest.FromString,
+                    response_serializer=mt5__pb2.OrderCancelResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -235,5 +363,141 @@ class MT5BrokerService(object):
         return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetSymbolTick',
             mt5__pb2.GetSymbolTickRequest.SerializeToString,
             mt5__pb2.SymbolTickResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetPositions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetPositions',
+            mt5__pb2.GetPositionsRequest.SerializeToString,
+            mt5__pb2.PositionsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetBalances(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetBalances',
+            mt5__pb2.GetBalancesRequest.SerializeToString,
+            mt5__pb2.BalancesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetSymbolInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetSymbolInfo',
+            mt5__pb2.GetSymbolInfoRequest.SerializeToString,
+            mt5__pb2.SymbolInfoResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetRatesRange(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetRatesRange',
+            mt5__pb2.GetRatesRangeRequest.SerializeToString,
+            mt5__pb2.RatesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetOpenOrders(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetOpenOrders',
+            mt5__pb2.GetOpenOrdersRequest.SerializeToString,
+            mt5__pb2.OpenOrdersResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetHistoryOrders(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/GetHistoryOrders',
+            mt5__pb2.GetHistoryOrdersRequest.SerializeToString,
+            mt5__pb2.HistoryOrdersResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OrderSend(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/OrderSend',
+            mt5__pb2.OrderSendRequest.SerializeToString,
+            mt5__pb2.OrderSendResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OrderCancel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mt5.v1.MT5BrokerService/OrderCancel',
+            mt5__pb2.OrderCancelRequest.SerializeToString,
+            mt5__pb2.OrderCancelResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -147,6 +147,22 @@ class MT5Connector:
             for pos in positions
         ]
 
+    def get_balances(self) -> List[Dict[str, Any]]:
+        """Get balances in broker_service-compatible shape."""
+        account = self.get_account()
+        if not account:
+            return []
+        asset = account.get("currency", "") or "USD"
+        free = float(account.get("margin_free", 0.0))
+        locked = float(account.get("margin", 0.0))
+        total = float(account.get("balance", 0.0))
+        return [{
+            "asset": asset,
+            "free": free,
+            "locked": locked,
+            "total": total,
+        }]
+
     def get_orders(self) -> List[Dict[str, Any]]:
         """Get open orders."""
         if not self.connected:
@@ -284,3 +300,44 @@ class MT5Connector:
             }
             for rate in rates
         ]
+
+    def order_send(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Send trade order via MT5 order_send()."""
+        if not self.connected:
+            return {}
+        result = mt5.order_send(payload)
+        if result is None:
+            return {}
+        return {
+            "retcode": int(getattr(result, "retcode", 0) or 0),
+            "deal": int(getattr(result, "deal", 0) or 0),
+            "order": int(getattr(result, "order", 0) or 0),
+            "volume": float(getattr(result, "volume", 0.0) or 0.0),
+            "price": float(getattr(result, "price", 0.0) or 0.0),
+            "bid": float(getattr(result, "bid", 0.0) or 0.0),
+            "ask": float(getattr(result, "ask", 0.0) or 0.0),
+            "comment": str(getattr(result, "comment", "") or ""),
+            "request_id": int(getattr(result, "request_id", 0) or 0),
+            "retcode_external": int(getattr(result, "retcode_external", 0) or 0),
+        }
+
+    def order_cancel(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Cancel order by sending REMOVE action through order_send()."""
+        if not self.connected:
+            return {}
+        order = int(payload.get("order", 0) or 0)
+        symbol = payload.get("symbol", "")
+        req = {
+            "action": mt5.TRADE_ACTION_REMOVE,
+            "order": order,
+        }
+        if symbol:
+            req["symbol"] = symbol
+        result = mt5.order_send(req)
+        if result is None:
+            return {}
+        return {
+            "retcode": int(getattr(result, "retcode", 0) or 0),
+            "order": order,
+            "comment": str(getattr(result, "comment", "") or ""),
+        }
